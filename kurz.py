@@ -433,7 +433,7 @@ class LinearCombination:
             n = int(other)
         except ValueError:
             raise ValueError('Modulo of linear combination only defined for integers')
-        combine = dict(self.combine)
+        combine = {v: s % n for v, s in self.combine.items()}
         combine[self.ctx.var()] = n
         return LinearCombination(ctx=self.ctx, combine=combine)
 
