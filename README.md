@@ -41,11 +41,11 @@ from kurz import Kurz
 
 kz = Kurz()
 
-V = [kz.u8() for _ in range(len(ti))]
+V = [kz.u8(f'b{i}') for i in range(len(ti))]
 
 # define short linear combination mod n
 w = sum([t * v for (v, t) in zip(V, ti)]) + inv * u
-(w % n).short()
+(w % n).expect(-255, 0)
 
 # prints a description of the system for debugging
 print(kz)
@@ -61,12 +61,12 @@ Where `print(kz)` shows the system of constraints:
 
 ```
 Kurz(
-    0xff >= |uint0|
-    0xff >= |uint1|
+    0xff >= |b0|
+    0xff >= |b1|
     ...
-    0xff >= |uint30|
+    0xff >= |b30|
     0x1 >= |1|
-    0x1 >= |1 * <constant> + uint0 * 0x100000000 + ... + var32 * <modulus>|
+    0x1 >= |1 * <constant> + b0 * 0x100000000 + ... + var32 * <modulus>|
 )
 ```
 

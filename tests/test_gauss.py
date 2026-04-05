@@ -40,5 +40,21 @@ class TestGaussianElimination(unittest.TestCase):
         self.assertEqual(sol(z), z_true)
 
 
+    def test_zero_constraint(self):
+        """Recover variables using .zero() on exact linear relations."""
+        m = Kurz()
+        x = m.var()
+        y = m.var()
+        x_true, y_true = 42, 17
+
+        for (a, b) in [(3, 7), (5, 11), (13, 2), (1, 1)]:
+            rhs = a * x_true + b * y_true
+            (a * x + b * y - rhs).zero()
+
+        sol = m.solve()
+        self.assertEqual(sol(x), x_true)
+        self.assertEqual(sol(y), y_true)
+
+
 if __name__ == '__main__':
     unittest.main()

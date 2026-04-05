@@ -45,7 +45,7 @@ class Kurz:
         Returns a "variable" which should be the constant value one.
         '''
         if self.vone is None:
-            self.vone = self.var(name='1').short(norm=1, expected=(1, 1))
+            self.vone = self.var(name='1').expect(1, 1)
         return self.vone
 
     def bit(self, name: str | None = None) -> Variable:
@@ -53,11 +53,11 @@ class Kurz:
 
     def uint(self, max: int, name: str | None = None) -> Variable:
         assert max > 0
-        return self.var(name, 'uint').short(expected=(0, max))
+        return self.var(name, 'uint').expect(0, max)
 
     def sint(self, max: int, name: str | None = None) -> Variable:
         assert max > 0
-        return self.var(name, 'sint').short(expected=(-max, max))
+        return self.var(name, 'sint').expect(-max, max)
 
     def u8(self, name: str | None = None) -> Variable:
         return self.uint((1 << 8) - 1, name)
@@ -505,23 +505,22 @@ class LinearCombination:
     def __rmul__(self, other) -> LinearCombination:
         return self.__mul__(other)
 
-    def short(self, norm: int | None = None,
-              expected: tuple[int, int] | None = None) -> LinearCombination:
+    def short(self, norm: int = 1) -> LinearCombination:
         '''
-        Constrain the linear combination to have small norm.
-
-        The "norm" parameter controls the LLL weight.
-        The "expected" parameter is a (lo, hi) range for solution filtering.
-        If only norm is given, no filtering is applied (just LLL hint).
-        If only expected is given, norm is derived as max(|lo|, |hi|).
+        Constrain the linear combination to have small norm (LLL hint only).
         '''
-        if expected is not None and norm is None:
-            norm = max(abs(expected[0]), abs(expected[1]))
-        if norm is None:
-            norm = 1
         if norm <= 0:
             raise ValueError('Norm must be positive')
-        self.ctx.add_constraint(self, norm, expected=expected)
+        self.ctx.add_constraint(self, norm)
+        return self
+
+    def expect(self, lo: int, hi: int) -> LinearCombination:
+        '''
+        Constrain the linear combination to be in [lo, hi].
+        '''
+        assert lo <= hi
+        norm = max(abs(lo), abs(hi), 1)
+        self.ctx.add_constraint(self, norm, expected=(lo, hi))
         return self
 
     def zero(self) -> LinearCombination:
@@ -587,11 +586,17 @@ class Variable:
     def __hash__(self) -> int:
         return hash(self.key())
 
-    def short(self, norm: int | None = None,
-              expected: tuple[int, int] | None = None) -> Variable:
+    def short(self, norm: int = 1) -> Variable:
         '''
-        Constrain the variable to have small norm.
+        Constrain the variable to have small norm (LLL hint only).
         '''
-        self.lin().short(norm, expected=expected)
+        self.lin().short(norm)
+        return self
+
+    def expect(self, lo: int, hi: int) -> Variable:
+        '''
+        Constrain the variable to be in [lo, hi].
+        '''
+        self.lin().expect(lo, hi)
         return self
 
