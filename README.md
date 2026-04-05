@@ -45,7 +45,7 @@ V = [kz.u8(f'b{i}') for i in range(len(ti))]
 
 # define short linear combination mod n
 w = sum([t * v for (v, t) in zip(V, ti)]) + inv * u
-(w % n).expect(-255, 0)
+(w % n).within(-255, 0)
 
 # prints a description of the system for debugging
 print(kz)

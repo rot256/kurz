@@ -45,7 +45,7 @@ class Kurz:
         Returns a "variable" which should be the constant value one.
         '''
         if self.vone is None:
-            self.vone = self.var(name='1').expect(1, 1)
+            self.vone = self.var(name='1').within(1, 1)
         return self.vone
 
     def bit(self, name: str | None = None) -> Variable:
@@ -53,11 +53,11 @@ class Kurz:
 
     def uint(self, max: int, name: str | None = None) -> Variable:
         assert max > 0
-        return self.var(name, 'uint').expect(0, max)
+        return self.var(name, 'uint').within(0, max)
 
     def sint(self, max: int, name: str | None = None) -> Variable:
         assert max > 0
-        return self.var(name, 'sint').expect(-max, max)
+        return self.var(name, 'sint').within(-max, max)
 
     def u8(self, name: str | None = None) -> Variable:
         return self.uint((1 << 8) - 1, name)
@@ -514,7 +514,7 @@ class LinearCombination:
         self.ctx.add_constraint(self, norm)
         return self
 
-    def expect(self, lo: int, hi: int) -> LinearCombination:
+    def within(self, lo: int, hi: int) -> LinearCombination:
         '''
         Constrain the linear combination to be in [lo, hi].
         '''
@@ -593,10 +593,10 @@ class Variable:
         self.lin().short(norm)
         return self
 
-    def expect(self, lo: int, hi: int) -> Variable:
+    def within(self, lo: int, hi: int) -> Variable:
         '''
         Constrain the variable to be in [lo, hi].
         '''
-        self.lin().expect(lo, hi)
+        self.lin().within(lo, hi)
         return self
 
