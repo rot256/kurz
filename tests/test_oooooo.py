@@ -25,14 +25,14 @@ class TestOooooo(unittest.TestCase):
 
             LEN = 128
 
-            le = Kurz()
+            kz = Kurz()
 
             v1 = ord('o')
             v0 = ord('O')
 
             D = v1 - v0
 
-            b = [le.bit() for _ in range(LEN)]
+            b = [kz.bit() for _ in range(LEN)]
 
             v0s = bytes_to_long(bytes([v0] * LEN))
             con = v0s - S
@@ -42,7 +42,7 @@ class TestOooooo(unittest.TestCase):
             (d % M).short()
 
             try:
-                solutions = le.solve()
+                solutions = kz.solve()
             except (ValueError, RuntimeError):
                 continue
 

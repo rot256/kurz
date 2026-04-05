@@ -39,34 +39,34 @@ Into a more readable:
 ```python3
 from kurz import Kurz
 
-le = Kurz()
+kz = Kurz()
 
-V = [le.byte() for _ in range(len(ti))]
+V = [kz.u8() for _ in range(len(ti))]
 
 # define short linear combination mod n
 w = sum([t * v for (v, t) in zip(V, ti)]) + inv * u
 (w % n).short()
 
 # prints a description of the system for debugging
-print(le)
+print(kz)
 
 # find a solution
-sol = le.solve()
+sol = kz.solve()
 
 # print values assigned in solution
 print(-sol(w), [sol(v) for v in V])
 ```
 
-Where `print(le)` shows the system of constraints:
+Where `print(kz)` shows the system of constraints:
 
 ```
 Kurz(
-    0xff >= |byte0|
-    0xff >= |byte1|
+    0xff >= |uint0|
+    0xff >= |uint1|
     ...
-    0xff >= |byte30|
+    0xff >= |uint30|
     0x1 >= |1|
-    0x1 >= |1 * <constant> + byte0 * 0x100000000 + ... + var32 * <modulus>|
+    0x1 >= |1 * <constant> + uint0 * 0x100000000 + ... + var32 * <modulus>|
 )
 ```
 
@@ -89,13 +89,13 @@ Install one of them (e.g. `pip install flatn`).
 You can select the backend explicitly:
 
 ```python3
-sol = le.solve(backend='fpylll')  # or backend='flatn'
+sol = kz.solve(backend='fpylll')  # or backend='flatn'
 ```
 
 Without either backend, `Kurz` can still be used to construct the lattice matrix using `.system()` and you can then apply LLL to the resulting lattice using another tool:
 
 ```python3
-M = le.system()
+M = kz.system()
 ```
 
 ## Tuning Reduction Quality
@@ -109,7 +109,7 @@ Both backends accept additional parameters which are forwarded directly to the u
 - **`alpha`** -- Flatter's internal slope parameter: `alpha = 2 * log2(rhf)`. Lower values produce shorter vectors but take longer.
 
 ```python3
-sol = le.solve(rhf=1.01)
+sol = kz.solve(rhf=1.01)
 ```
 
 ### Fpylll
@@ -118,22 +118,22 @@ sol = le.solve(rhf=1.01)
 - **`eta`** -- LLL parameter (0 to sqrt(delta)). Defaults to 0.51.
 
 ```python3
-sol = le.solve(backend='fpylll', delta=0.9999)
+sol = kz.solve(backend='fpylll', delta=0.9999)
 ```
 
 ## Iterating Over Solutions
 
-`le.solve()` returns a `Solutions` object. You can query the first solution directly:
+`kz.solve()` returns a `Solutions` object. You can query the first solution directly:
 
 ```python3
-sol = le.solve()
+sol = kz.solve()
 print(sol(v))  # value of variable v in the first solution
 ```
 
 Or iterate over all non-degenerate solutions from the reduced lattice:
 
 ```python3
-for sol in le.solve():
+for sol in kz.solve():
     print(sol(v))
 ```
 

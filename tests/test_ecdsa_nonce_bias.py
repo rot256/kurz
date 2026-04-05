@@ -89,8 +89,8 @@ class TestEcdsaNonceBias(unittest.TestCase):
         Returns:
             Recovered private key, or None on failure.
         """
-        le = Kurz()
-        d = le.var(name='privkey')
+        kz = Kurz()
+        d = kz.var(name='privkey')
 
         B = 1 << leaked_bits
         Binv = _modinv(B, N)
@@ -103,7 +103,7 @@ class TestEcdsaNonceBias(unittest.TestCase):
 
         d.short(N)
 
-        for sol in le.solve():
+        for sol in kz.solve():
             candidate = sol(d) % N
             if candidate > 0 and _ec_mul(candidate, G) == pubkey:
                 return candidate

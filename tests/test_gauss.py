@@ -4,13 +4,13 @@ that only appear in multi-variable constraints.
 """
 
 import unittest
-import kurz as le
+from kurz import Kurz
 
 
 class TestGaussianElimination(unittest.TestCase):
 
     def test_two_unknowns(self):
-        m = le.Kurz()
+        m = Kurz()
         x = m.var()
         y = m.var()
         x_true, y_true = 42, 17
@@ -24,7 +24,7 @@ class TestGaussianElimination(unittest.TestCase):
         self.assertEqual(sol(y), y_true)
 
     def test_three_unknowns(self):
-        m = le.Kurz()
+        m = Kurz()
         x = m.var()
         y = m.var()
         z = m.var()

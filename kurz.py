@@ -38,25 +38,62 @@ class Kurz:
     def __init__(self):
         self.vars: list[Variable] = []
         self.vone: Variable | None = None
-        self.constraints: list[tuple[LinearCombination, int]] = []
+        self.constraints: list[tuple[LinearCombination, int, tuple[int, int] | None]] = []
 
     def one(self) -> Variable:
         '''
         Returns a "variable" which should be the constant value one.
         '''
         if self.vone is None:
-            self.vone = self.bit(name='1')
+            self.vone = self.var(name='1').short(norm=1, expected=(1, 1))
         return self.vone
 
     def bit(self, name: str | None = None) -> Variable:
-        return self.var(name, 'bit').short(norm=1)
+        return self.uint(1, name)
 
-    def byte(self, name: str | None = None) -> Variable:
-        return self.var(name, 'byte').short(norm=0xff)
+    def uint(self, max: int, name: str | None = None) -> Variable:
+        assert max > 0
+        return self.var(name, 'uint').short(expected=(0, max))
 
-    def word(self, width: int, name: str | None = None) -> Variable:
-        assert width > 0
-        return self.var(name, 'word').short(norm=(1 << width)-1)
+    def sint(self, max: int, name: str | None = None) -> Variable:
+        assert max > 0
+        return self.var(name, 'sint').short(expected=(-max, max))
+
+    def u8(self, name: str | None = None) -> Variable:
+        return self.uint((1 << 8) - 1, name)
+
+    def u16(self, name: str | None = None) -> Variable:
+        return self.uint((1 << 16) - 1, name)
+
+    def u32(self, name: str | None = None) -> Variable:
+        return self.uint((1 << 32) - 1, name)
+
+    def u64(self, name: str | None = None) -> Variable:
+        return self.uint((1 << 64) - 1, name)
+
+    def u128(self, name: str | None = None) -> Variable:
+        return self.uint((1 << 128) - 1, name)
+
+    def u256(self, name: str | None = None) -> Variable:
+        return self.uint((1 << 256) - 1, name)
+
+    def i8(self, name: str | None = None) -> Variable:
+        return self.sint((1 << 8) - 1, name)
+
+    def i16(self, name: str | None = None) -> Variable:
+        return self.sint((1 << 16) - 1, name)
+
+    def i32(self, name: str | None = None) -> Variable:
+        return self.sint((1 << 32) - 1, name)
+
+    def i64(self, name: str | None = None) -> Variable:
+        return self.sint((1 << 64) - 1, name)
+
+    def i128(self, name: str | None = None) -> Variable:
+        return self.sint((1 << 128) - 1, name)
+
+    def i256(self, name: str | None = None) -> Variable:
+        return self.sint((1 << 256) - 1, name)
 
     def var(self, name: str | None = None, prefix: str = 'var') -> Variable:
         idx = len(self.vars)
@@ -68,9 +105,10 @@ class Kurz:
         self.vars.append(var)
         return var
 
-    def add_constraint(self, lin: LinearCombination, norm: int) -> None:
+    def add_constraint(self, lin: LinearCombination, norm: int,
+                       expected: tuple[int, int] | None = None) -> None:
         assert isinstance(lin, LinearCombination)
-        self.constraints.append((lin, int(norm)))
+        self.constraints.append((lin, int(norm), expected))
 
     def system(self) -> list[list[int]]:
         '''
@@ -79,21 +117,21 @@ class Kurz:
         This does not require fpylll.
         '''
 
-        max_norm = max((norm for _, norm in self.constraints), default=1)
+        max_norm = max((norm for _, norm, _ in self.constraints), default=1)
 
         rows = len(self.vars)
         cols = len(self.constraints)
 
         M = _zero_matrix(rows, cols)
 
-        for i, (lin, norm) in enumerate(self.constraints):
+        for i, (lin, norm, _) in enumerate(self.constraints):
             rescale = max_norm // norm
             for var, scl in lin.combine.items():
                 M[var.index][i] = scl * rescale
 
         return M
 
-    def _padded_system(self) -> tuple[list[list[int]], list[tuple[LinearCombination, int]]]:
+    def _padded_system(self) -> tuple[list[list[int]], list[tuple[LinearCombination, int, tuple[int, int] | None]]]:
         '''
         Returns (matrix, constraints) where matrix is the LLL system
         with extra identity columns for unbounded variables
@@ -113,7 +151,7 @@ class Kurz:
         # pad with identity columns for unbounded variables
         # to make the matrix at least square
         bounded = set()
-        for lin, _ in self.constraints:
+        for lin, _, _ in self.constraints:
             if len(lin) == 1:
                 bounded.update(lin.vars())
 
@@ -124,7 +162,7 @@ class Kurz:
                 for row in M:
                     row.append(0)
                 M[var.index][-1] = 1
-                padded_cons.append((var.lin(), 1))
+                padded_cons.append((var.lin(), 1, None))
                 cols += 1
 
         return M, padded_cons
@@ -189,11 +227,11 @@ class Kurz:
         '''
         M, padded_cons = self._padded_system()
         R = self._reduce(M, backend or BACKEND_DEFAULT, **kwargs)
-        return Solutions(R, self.vone, self.vars, padded_cons, M)
+        return Solutions(R, self.vars, padded_cons, M)
 
     def __repr__(self) -> str:
         cons = []
-        for (lin, norm) in self.constraints:
+        for (lin, norm, _) in self.constraints:
             cons.append(f'    {norm:#x} >= |{lin}|')
         return 'Kurz(\n' + '\n'.join(cons) + '\n)'
 
@@ -249,16 +287,15 @@ class Solutions:
     def __init__(
         self,
         R: list[list[int]],
-        vone: Variable | None,
         vars: list[Variable],
-        cons: list[tuple[LinearCombination, int]],
+        cons: list[tuple[LinearCombination, int, tuple[int, int] | None]],
         M: list[list[int]],
     ):
         self.R = [list(row) for row in R]
-        self.vone = vone
         self.vars = list(vars)
         self.cons = list(cons)
-        self.rels = [rel for (rel, _norm) in cons]
+        self.rels = [rel for (rel, _, _) in cons]
+        self.expected = [(rel, rng) for (rel, _, rng) in cons if rng is not None]
         self.M = M
         self._first: Solution | None = None
 
@@ -347,33 +384,19 @@ class Solutions:
         num_vars = len(self.vars)
         num_cons = len(self.rels)
 
-        for sol in self.R:
-            # assign linear combinations
-            assign_rels: dict[LinearCombination, int] = {}
-            for (rel, val) in zip(self.rels, sol):
-                assign_rels[rel] = val
-
-            # solve M^T * x = sol via Gaussian elimination
-            result = self._solve_row(self.M, sol, num_vars, num_cons)
+        for row in self.R:
+            rels = dict(zip(self.rels, row))
+            result = self._solve_row(self.M, row, num_vars, num_cons)
             if result is None:
-                # could not determine all variables from this row
                 continue
-
-            # skip degenerate: vone=0 means all constants vanish
-            if self.vone is not None and result[self.vone.index] == 0:
-                continue
-
-            # normalize sign: LLL may return -v instead of v;
-            # if vone is negative, flip the entire solution
-            if self.vone is not None and result[self.vone.index] < 0:
-                result = [-v for v in result]
-                assign_rels = {rel: -val for rel, val in assign_rels.items()}
-
-            assign_vars: dict[Variable, int] = {}
-            for var, val in zip(self.vars, result):
-                assign_vars[var] = val
-
-            yield Solution(assign_vars, assign_rels)
+            for sign in (1, -1):
+                vals = {v: x * sign for v, x in zip(self.vars, result)}
+                if not all(
+                    lo <= sum(c * vals[v] for v, c in lin.combine.items()) <= hi
+                    for lin, (lo, hi) in self.expected
+                ):
+                    continue
+                yield Solution(vals, {k: v * sign for k, v in rels.items()})
 
     def _get_first(self) -> Solution:
         '''Returns the first non-degenerate solution, caching it.'''
@@ -482,16 +505,30 @@ class LinearCombination:
     def __rmul__(self, other) -> LinearCombination:
         return self.__mul__(other)
 
-    def short(self, norm: int = 1) -> LinearCombination:
+    def short(self, norm: int | None = None,
+              expected: tuple[int, int] | None = None) -> LinearCombination:
         '''
         Constrain the linear combination to have small norm.
 
-        The "norm" parameter should be understood
-        as the "max-value" of the variable/linear combination.
+        The "norm" parameter controls the LLL weight.
+        The "expected" parameter is a (lo, hi) range for solution filtering.
+        If only norm is given, no filtering is applied (just LLL hint).
+        If only expected is given, norm is derived as max(|lo|, |hi|).
         '''
+        if expected is not None and norm is None:
+            norm = max(abs(expected[0]), abs(expected[1]))
+        if norm is None:
+            norm = 1
         if norm <= 0:
             raise ValueError('Norm must be positive')
-        self.ctx.add_constraint(self, norm)
+        self.ctx.add_constraint(self, norm, expected=expected)
+        return self
+
+    def zero(self) -> LinearCombination:
+        '''
+        Constrain the linear combination to be exactly zero.
+        '''
+        self.ctx.add_constraint(self, 1, expected=(0, 0))
         return self
 
 @total_ordering
@@ -550,9 +587,11 @@ class Variable:
     def __hash__(self) -> int:
         return hash(self.key())
 
-    def short(self, norm: int = 1) -> Variable:
+    def short(self, norm: int | None = None,
+              expected: tuple[int, int] | None = None) -> Variable:
         '''
         Constrain the variable to have small norm.
         '''
-        self.lin().short(norm)
+        self.lin().short(norm, expected=expected)
         return self
+

@@ -1,10 +1,10 @@
 import random
 import unittest
-import kurz
+from kurz import Kurz
 
 
 class TestBounded(unittest.TestCase):
-    """Tests that .word(), .bit(), .byte() recover known solutions."""
+    """Tests that .bit(), .uint(), .sint(), .u8() etc. recover known solutions."""
 
     def _constrain(self, variables, values, n=8):
         """Add n random linear constraints binding variables to values."""
@@ -33,38 +33,38 @@ class TestBounded(unittest.TestCase):
 
     def test_bit(self):
         random.seed(0xb17)
-        m = kurz.Kurz()
-        values = [0, 1, 1, -1, 0]
+        m = Kurz()
+        values = [0, 1, 1, 0, 1]
         bits = [m.bit() for _ in values]
         self._solve_check(m, bits, [1] * len(values), values)
 
-    def test_byte(self):
+    def test_u8(self):
         random.seed(0xb47e)
-        m = kurz.Kurz()
+        m = Kurz()
         values = [0, 42, 255, 128]
-        bvars = [m.byte() for _ in values]
+        bvars = [m.u8() for _ in values]
         self._solve_check(m, bvars, [0xff] * len(values), values)
 
-    def test_word(self):
+    def test_uint(self):
         random.seed(0x0FD)
-        m = kurz.Kurz()
+        m = Kurz()
         widths = [1, 4, 12, 16, 24]
         values = [1, 13, 3000, 50000, 10_000_000]
-        words = [m.word(w) for w in widths]
         norms = [(1 << w) - 1 for w in widths]
-        self._solve_check(m, words, norms, values, n=10)
+        uvars = [m.uint(n) for n in norms]
+        self._solve_check(m, uvars, norms, values, n=10)
 
     def test_mixed(self):
-        """Recover bit, byte, and word variables from shared constraints."""
+        """Recover bit, u8, and uint variables from shared constraints."""
         random.seed(0x1ed)
-        m = kurz.Kurz()
+        m = Kurz()
 
         spec = [
-            (m.bit(), 1, -1),
+            (m.bit(), 1, 0),
             (m.bit(), 1, 1),
-            (m.byte(), 0xff, 200),
-            (m.word(12), (1 << 12) - 1, 3000),
-            (m.word(16), (1 << 16) - 1, 60000),
+            (m.u8(), 0xff, 200),
+            (m.uint((1 << 12) - 1), (1 << 12) - 1, 3000),
+            (m.uint((1 << 16) - 1), (1 << 16) - 1, 60000),
         ]
         variables, norms, values = zip(*spec)
         self._solve_check(m, variables, norms, values, n=12)
@@ -77,8 +77,8 @@ class TestBounded(unittest.TestCase):
         k = 2   # equations (heavily underdetermined)
         bound = (1 << 8) - 1
 
-        m = kurz.Kurz()
-        xs = [m.byte() for _ in range(n)]
+        m = Kurz()
+        xs = [m.i8() for _ in range(n)]
 
         A = [[random.randrange(1, 10**9) for _ in range(n)] for _ in range(k)]
         for row in A:
@@ -107,7 +107,7 @@ class TestBounded(unittest.TestCase):
         columns for unbounded y and z so the Gaussian solver
         can extract their values.
         """
-        m = kurz.Kurz()
+        m = Kurz()
         y = m.var()
         z = m.var()
 

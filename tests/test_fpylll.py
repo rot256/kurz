@@ -9,7 +9,6 @@ import unittest
 
 from Crypto.Util.number import long_to_bytes, bytes_to_long, getPrime
 
-import kurz as le
 from kurz import Kurz, BACKEND_FPYLLL
 
 
@@ -92,7 +91,7 @@ class TestH1Fpylll(unittest.TestCase):
 
         m = Kurz()
 
-        V = [m.byte() for _ in range(len(ti))]
+        V = [m.u8() for _ in range(len(ti))]
 
         w = sum([t * v for (v, t) in zip(V, ti)])
         w += inv * u
@@ -139,14 +138,14 @@ class TestOoooooFpylll(unittest.TestCase):
             (d % M).short()
 
             try:
-                sol = m.solve(backend=BACKEND_FPYLLL)
-            except ValueError:
+                solutions = m.solve(backend=BACKEND_FPYLLL)
+            except (ValueError, RuntimeError):
                 continue
 
-            s = [chr(v1) if sol(bi) else chr(v0) for bi in b][::-1]
-            s = ''.join(s)
-            if s == message.decode('utf-8'):
-                return
+            for sol in solutions:
+                s = [chr(v1) if sol(bi) else chr(v0) for bi in b][::-1]
+                if ''.join(s) == message.decode('utf-8'):
+                    return
 
             self.assertGreater(fails, 0, 'too many failed attempts')
             fails -= 1
@@ -207,8 +206,8 @@ def _ecdsa_sign(privkey, msg_hash, nonce):
 class TestEcdsaNonceBiasFpylll(unittest.TestCase):
 
     def _recover_privkey(self, sigs, leaked_bits, pubkey):
-        le = Kurz()
-        d = le.var(name='privkey')
+        kz = Kurz()
+        d = kz.var(name='privkey')
 
         B = 1 << leaked_bits
         Binv = _modinv(B, _N)
@@ -221,7 +220,7 @@ class TestEcdsaNonceBiasFpylll(unittest.TestCase):
 
         d.short(_N)
 
-        for sol in le.solve(backend=BACKEND_FPYLLL):
+        for sol in kz.solve(backend=BACKEND_FPYLLL):
             candidate = sol(d) % _N
             if candidate > 0 and _ec_mul(candidate, _G) == pubkey:
                 return candidate
